@@ -258,7 +258,7 @@ def main():
     
     y_scores = [scores[results.index(tweet)] if(tweet in results) else 0 for tweet in subset_tweets_ids]
     relevant_tweets = tweet_text[tweet_text["tweet_id"].isin(results)]
-    print(relevant_tweets["text"])
+    #print(relevant_tweets["text"])
 
     file_path = 'output.txt'
     # Open the file in write mode and save the text content
