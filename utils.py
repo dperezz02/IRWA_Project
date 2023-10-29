@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 import nltk
 nltk.download('stopwords')
-from utils import build_terms
 
 def build_terms(line):
     """
