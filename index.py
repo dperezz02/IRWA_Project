@@ -169,7 +169,7 @@ def rank_documents(terms, docs, index, idf, tf, tweet_ids):
     return result_docs[:10]
 
 
-def search_tf_idf(query, index, idf, tf, tweet_ids):
+def search_tf_idf(query, index, idf, tf):
     """
     output is the list of documents that contain any of the query terms.
     So, we will get the list of documents for each query term, and take the union of them.
@@ -187,7 +187,7 @@ def search_tf_idf(query, index, idf, tf, tweet_ids):
             #term is not in index
             pass
     docs = list(docs)
-    ranked_docs = rank_documents(query, docs, index, idf, tf, tweet_ids)
+    ranked_docs = rank_documents(query, docs, index, idf, tf)
     #print( ranked_docs)
     return ranked_docs
 
@@ -240,7 +240,6 @@ def main():
     results = search_tf_idf(baseline_queries[0], index, idf, tf)
     relevant_tweets = tweet_text[tweet_text["tweet_id"].isin(results)]
     print(relevant_tweets["text"])
-    print("=" * 50)
 
  
     # query = 'putin and the war'
@@ -274,74 +273,3 @@ def main():
     #     file.writelines(query_results)
 
 main()
-
-
-
-
-# def vector_index(lines):
-#     """
-#     input: list of paragraphs
-#     output: dataframe mapping each paragraph to its embedding
-#     """
-#     # from sklearn.cluster import AgglomerativeClustering
-#     embeddings = model.encode(lines)
-#     df = pd.DataFrame(
-#         {"tweet": lines[i]["id"], "vector_representation": embeddings[i]}
-#         for i in range(len(embeddings))
-#     )
-#     return df
-
-# def obtain_similarity(query, df, k):
-#     """
-#     arguments:
-#         - query: word or sentence to compare
-#         - df: dataframe mapping paragraphs to embeddings
-#         - k: number of selected similar paragraphs
-#     output: list of paragraphs relevant for the query and the position in the datframe at which they are
-#     """
-
-#     query_embedding = model.encode(query)
-#     df["similarity"] = df["vector_representation"].apply(
-#         lambda x: cosine_similarity(x, query_embedding)
-#     )
-#     results = df.sort_values("similarity", ascending=False, ignore_index=True)
-#     top_k = results["tweet"][1:k]
-#     top_k = list(top_k)
-#     ## Find positions of the top_k in df
-#     positions = df.loc[df["tweet"].isin(top_k)].index
-#     return top_k, positions
-
-# def calculate_tf_idf(index):
-#     tf_idf_scores = {}
-#     total_tweets = len(index.keys())
-
-#     tf = defaultdict(list)
-#     df = defaultdict(int)  
-
-#     # Calculate IDF for each term
-#     idf = {term: np.log(total_tweets / len(postings)) for term, postings in index.items()}
-#     norm = 0
-#     for term, posting in index.items():
-#         # posting will contain the list of positions for current term in current document.
-#         # posting ==> [current_doc, [list of positions]]
-#         # you can use it to infer the frequency of current term.
-#         norm += len(posting[1]) ** 2
-#     norm = math.sqrt(norm)
-    
-#     for term, posting in index.items():
-#             # append the tf for current term (tf = term frequency in current doc/norm)
-#             tf[term].append(np.round(len(posting[1]) / norm, 4)) ## SEE formula (1) above
-#             #increment the document frequency of current term (number of documents containing the current term)
-#             df[term] += 1 # increment DF for current term
-
-
-#     # Calculate TF-IDF scores for each term in each tweet
-#     for term, postings in index.items():
-#         tf_idf_scores[term] = {}
-#         for posting in postings:
-#             tweet_id, positions = posting[0], posting[1]
-#             tf = len(positions)
-#             tf_idf = tf * idf[term]
-#             tf_idf_scores[term][tweet_id] = tf_idf
-
-#     return tf_idf_scores
