@@ -14,15 +14,16 @@ from openai.embeddings_utils import cosine_similarity
 import re
 import pandas as pd
 import matplotlib.pyplot as plt
-from torch import cosine_similarity
-from wordcloud import WordCloud
-from sentence_transformers import SentenceTransformer
+#from torch import cosine_similarity
+#from wordcloud import WordCloud
+#from sentence_transformers import SentenceTransformer
 import nltk
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 nltk.download('stopwords')
 from utils import build_terms, read_tweets
-model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
+import csv
+#model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
 
 def create_index(lines):
     """
@@ -34,6 +35,9 @@ def create_index(lines):
     Returns:
     index - the inverted index (implemented through a Python dictionary) containing terms as keys and the corresponding
     list of documents where these keys appears in (and the positions) as values.
+    tf - normalized term frequency for each term in each document
+    df - number of documents each term appear in
+    idf - inverse document frequency of each term
     """
     tf = defaultdict(list) 
     df = defaultdict(int)  
@@ -187,28 +191,52 @@ def search_tf_idf(query, index, idf, tf, tweet_ids):
     #print( ranked_docs)
     return ranked_docs
 
+def select_docs(data, query_id):
+    subset = []
+
+    for line in data:
+        doc, q_id, label = line.split(',')
+        if q_id == query_id:
+            subset.append(doc)
+        elif label == '1':
+            subset.append(doc)
+
+    return subset
+
+def read_csv(path):
+    with open(path, 'r') as file:
+        reader = csv.reader(file)
+        next(reader)  # Salta el encabezado
+        data = [",".join(row) for row in reader]
+    return data
+
 def main():
     file_path = ''
     start_time = time.time()
-    docs_path = '/Users/nvila/Downloads/Rus_Ukr_war_data.json'
+    docs_path = 'C:/Users/2002d/OneDrive/Documentos/UPF/2023-2024/1st Term/Information Retrieval and Web Analysis/Project/IRWA_data_2023/Rus_Ukr_war_data.json'
+    ev1 = 'C:/Users/2002d/OneDrive/Documentos/UPF/2023-2024/1st Term/Information Retrieval and Web Analysis/Project/IRWA_data_2023/Evaluation_gt.csv'
+    evaluation_data1 = read_csv(ev1)
     with open(docs_path) as fp:
         lines = fp.readlines()
     lines = [l.strip().replace(' +', ' ') for l in lines]
     print("There are ", len(lines), " tweets")
+
+    docs_Q1 = select_docs(evaluation_data1,"Q1")
+    #print(docs_Q1)
     
     # Process lines to create a list of tweet IDs
     tweet_ids = [json.loads(line)["id"] for line in lines]
     tweet_ids_df = pd.DataFrame({'tweet_id': tweet_ids, 'position': list(range(len(tweet_ids)))})
 
-    index, tf, df, idf = create_index(lines)
+    #index, tf, df, idf = create_index(lines)
     # Save the index, tf, df, and idf to JSON files
     #save_index_to_json(index, tf, df, idf, 'index.json', 'tf.json', 'df.json', 'idf.json')
     # print(tf.keys())
     # print(tf['putin'])
     # Example usage:
-    query = 'putin and the war'
-    results = search_tf_idf(query, index, idf, tf, tweet_ids_df)
-    print(results)
+    #query = 'putin and the war'
+    #results = search_tf_idf(query, index, idf, tf, tweet_ids_df)
+    #print(results)
 
 
     # Load the index, tf, df, and idf from JSON files
