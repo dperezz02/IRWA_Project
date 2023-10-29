@@ -35,9 +35,6 @@ def create_index(lines):
     Returns:
     index - the inverted index (implemented through a Python dictionary) containing terms as keys and the corresponding
     list of documents where these keys appears in (and the positions) as values.
-    tf - normalized term frequency for each term in each document
-    df - number of documents each term appear in
-    idf - inverse document frequency of each term
     """
     tf = defaultdict(list) 
     df = defaultdict(int)  
@@ -86,11 +83,6 @@ def create_index(lines):
             idf[term] = np.round(np.log(float(num_documents / df[term])), 4)
     return index, tf, df, idf
 
-
-def generate_ranking(query, index, tf, idf):
-    # TODO: Generate rankings
-    return 0
-
 def scatter_plot(df):
     # Apply T-SNE for dimensionality reduction
     tsne = TSNE(n_components=2, random_state=42)
@@ -105,7 +97,7 @@ def scatter_plot(df):
     plt.savefig("./scatter_plot")
     plt.close()  # Close the plot to release resources
 
-def rank_documents(terms, docs, index, idf, tf, tweet_ids):
+def rank_documents(terms, docs, index, idf, tf):
     """
     Perform the ranking of the results of a search based on the tf-idf weights
 
@@ -120,16 +112,12 @@ def rank_documents(terms, docs, index, idf, tf, tweet_ids):
     Returns:
     Print the list of ranked documents
     """
-
-    # I'm interested only on the element of the docVector corresponding to the query terms
-    # The remaining elements would become 0 when multiplied to the query_vector
     doc_vectors = defaultdict(lambda: [0] * len(terms)) # I call doc_vectors[k] for a nonexistent key k, the key-value pair (k,[0]*len(terms)) will be automatically added to the dictionary
     query_vector = [0] * len(terms)
 
-    # compute the norm for the query tf
+
     query_terms_count = collections.Counter(terms)  # get the frequency of each term in the query.
-    # Example: collections.Counter(["hello","hello","world"]) --> Counter({'hello': 2, 'world': 1})
-   
+
     query_norm = la.norm(list(query_terms_count.values()))
 
     for termIndex, term in enumerate(terms):  #termIndex is the index of the term in the query
@@ -147,26 +135,20 @@ def rank_documents(terms, docs, index, idf, tf, tweet_ids):
 
             #tf[term][0] will contain the tf of the term "term" in the doc 26
             if doc in docs:
-        
                 doc_vectors[doc][termIndex] = tf[term][doc_index][1] * idf[term]
-
-    # Calculate the score of each doc
-    # compute the cosine similarity between queyVector and each docVector:
-    # HINT: you can use the dot product because in case of normalized vectors it corresponds to the cosine similarity
-    # see np.dot
 
     doc_scores = [[np.dot(curDocVec, query_vector), doc] for doc, curDocVec in doc_vectors.items()]
     doc_scores.sort(reverse=True)
     
     result_docs = [x[1] for x in doc_scores]
-    #print document titles instead if document id's
-    #result_docs=[ title_index[x] for x in result_docs ]
+    result_scores = [x[0] for x in doc_scores]
+    
     if len(result_docs) == 0:
         print("No results found, try again")
         query = input()
         docs = search_tf_idf(query, index)
-    #print ('\n'.join(result_docs), '\n')
-    return result_docs[:10]
+
+    return result_docs, result_scores
 
 
 def search_tf_idf(query, index, idf, tf):
@@ -187,21 +169,26 @@ def search_tf_idf(query, index, idf, tf):
             #term is not in index
             pass
     docs = list(docs)
-    ranked_docs = rank_documents(query, docs, index, idf, tf)
-    #print( ranked_docs)
-    return ranked_docs
+    ranked_docs, scores = rank_documents(query, docs, index, idf, tf)
+    return ranked_docs, scores
 
 def select_docs(data, query_id):
     subset = []
+    ground_truths = []
 
     for line in data:
         doc, q_id, label = line.split(',')
         if q_id == query_id:
             subset.append(doc)
+            if label == '1':
+                ground_truths.append(1)
+            else:
+                ground_truths.append(0)
         elif label == '1':
             subset.append(doc)
+            ground_truths.append(0)
 
-    return subset
+    return subset, ground_truths
 
 def read_csv(path):
     with open(path, 'r') as file:
@@ -210,38 +197,81 @@ def read_csv(path):
         data = [",".join(row) for row in reader]
     return data
 
+def precision_at_k(doc_score, y_score, k=10):
+    """
+    Parameters
+    ----------
+    doc_score: Ground truth (true relevance labels).
+    y_score: Predicted scores.
+    k : number of doc to consider.
+
+    Returns
+    -------
+    precision @k : float
+
+    """
+    order = np.argsort(y_score)[::-1]
+    doc_score = np.take(doc_score, order[:k])
+    relevant = sum(doc_score == 1)
+    return float(relevant) / k
+
 def main():
     file_path = ''
     start_time = time.time()
     docs_path = 'C:/Users/2002d/OneDrive/Documentos/UPF/2023-2024/1st Term/Information Retrieval and Web Analysis/Project/IRWA_data_2023/Rus_Ukr_war_data.json'
     ev1 = 'C:/Users/2002d/OneDrive/Documentos/UPF/2023-2024/1st Term/Information Retrieval and Web Analysis/Project/IRWA_data_2023/Evaluation_gt.csv'
     evaluation_data1 = read_csv(ev1)
-    with open(docs_path) as fp:
-        lines = fp.readlines()
+    with open(docs_path) as fp: lines = fp.readlines()
     lines = [l.strip().replace(' +', ' ') for l in lines]
     print("There are ", len(lines), " tweets")
+
+    ids_path = 'C:/Users/2002d/OneDrive/Documentos/UPF/2023-2024/1st Term/Information Retrieval and Web Analysis/Project/IRWA_data_2023/Rus_Ukr_war_data_ids.csv'
+    doc_ids = pd.read_csv(ids_path,sep='\t', header=None)
+    doc_ids.columns = ["doc_id", "tweet_id"]
+    tweet_document_ids_map = {}
+    for index, row in doc_ids.iterrows():
+        tweet_document_ids_map[row['tweet_id']] = row['doc_id']
     
     # Process lines to create a list of tweet IDs
     tweet_ids = [json.loads(line)["id"] for line in lines]
     tweets_texts = [json.loads(line)["full_text"] for line in lines]
     tweet_text = pd.DataFrame({'tweet_id': tweet_ids, 'text': tweets_texts})
-    index, tf, df, idf = create_index(lines)
+    #index, tf, df, idf = create_index(lines)
 
     baseline_queries = [
         "Tank Kharkiv",
         "Nord Stream pipeline",
         "Annexation territories Russia"
     ]
-    docs_Q1 = select_docs(evaluation_data1,"Q1")
-    docs_Q2 = select_docs(evaluation_data1,"Q2")
-    docs_Q3 = select_docs(evaluation_data1,"Q3")
+    docs_Q1, ground_truths_Q1 = select_docs(evaluation_data1,"Q1")
+    docs_Q2, ground_truths_Q2 = select_docs(evaluation_data1,"Q2")
+    docs_Q3, ground_truths_Q3 = select_docs(evaluation_data1,"Q3")
+    
+    subset = [line for line in lines if tweet_document_ids_map[json.loads(line)["id"]] in(docs_Q1)]
+    subset_tweets_texts = [json.loads(line)["full_text"] for line in subset]
+    subset_tweets_ids = [json.loads(line)["id"] for line in subset]
+    subindex, subtf, subdf, subidf = create_index(subset)
 
     print(f"Query: {baseline_queries[0]}")
-    results = search_tf_idf(baseline_queries[0], index, idf, tf)
+    results, scores = search_tf_idf(baseline_queries[0], subindex, subidf, subtf)
+    
+    y_scores = [scores[results.index(tweet)] if(tweet in results) else 0 for tweet in subset_tweets_ids]
+    print(y_scores)
+    print(results)
+    print(scores)
     relevant_tweets = tweet_text[tweet_text["tweet_id"].isin(results)]
     print(relevant_tweets["text"])
 
- 
+    file_path = 'output.txt'
+    # Open the file in write mode and save the text content
+    with open(file_path, 'w', encoding="utf-8") as file:
+        file.write(relevant_tweets.to_string(index=False))
+
+    #EVALUATION
+    precision_Q1 = precision_at_k(ground_truths_Q1, y_scores)
+    print(precision_Q1)
+
+
     # query = 'putin and the war'
     # results = search_tf_idf(query, index, idf, tf)
 
