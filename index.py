@@ -301,6 +301,8 @@ def main():
     docs_path = 'C:/Users/2002d/OneDrive/Documentos/UPF/2023-2024/1st Term/Information Retrieval and Web Analysis/Project/IRWA_data_2023/Rus_Ukr_war_data.json'
     ev1 = 'C:/Users/2002d/OneDrive/Documentos/UPF/2023-2024/1st Term/Information Retrieval and Web Analysis/Project/IRWA_data_2023/Evaluation_gt.csv'
     evaluation_data1 = read_csv(ev1)
+    ev2 = 'C:/Users/2002d/OneDrive/Documentos/UPF/2023-2024/1st Term/Information Retrieval and Web Analysis/Project/IRWA_data_2023/evaluation_custom_queries.csv'
+    evaluation_data2 = read_csv(ev2)
     with open(docs_path) as fp: lines = fp.readlines()
     lines = [l.strip().replace(' +', ' ') for l in lines]
     print("There are ", len(lines), " tweets")
@@ -324,9 +326,9 @@ def main():
         "Annexation of territories Russia"
     ]
     
-    docs_Q1, ground_truths_Q1 = select_docs(evaluation_data1,"Q1")
-    docs_Q2, ground_truths_Q2 = select_docs(evaluation_data1,"Q2")
-    docs_Q3, ground_truths_Q3 = select_docs(evaluation_data1,"Q3")
+    docs_Q1, ground_truths_Q1 = select_docs(evaluation_data2,"Q1")
+    docs_Q2, ground_truths_Q2 = select_docs(evaluation_data2,"Q2")
+    docs_Q3, ground_truths_Q3 = select_docs(evaluation_data2,"Q3")
     
     subsetQ1 = [line for line in lines if tweet_document_ids_map[json.loads(line)["id"]] in(docs_Q1)]
     subsetQ1 = sorted(subsetQ1, key=lambda line: docs_Q1.index(tweet_document_ids_map[json.loads(line)["id"]]))
@@ -397,7 +399,7 @@ def main():
     print("\n")
     map = (avg_precision_Q1+avg_precision_Q2+avg_precision_Q3)/3
     print("MAP of Queries 1,2 and 3: ", map)
-    mrr = (rr_at_k(ground_truths_Q1, y_scoresQ1)+rr_at_k(ground_truths_Q2, y_scoresQ2)+rr_at_k(ground_truths_Q2, y_scoresQ3))/3
+    mrr = (rr_at_k(ground_truths_Q1, y_scoresQ1)+rr_at_k(ground_truths_Q2, y_scoresQ2)+rr_at_k(ground_truths_Q3, y_scoresQ3))/3
     print("MRR of Queries 1,2 and 3: ", mrr)
 
 
