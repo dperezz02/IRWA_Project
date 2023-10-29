@@ -220,53 +220,58 @@ def main():
         lines = fp.readlines()
     lines = [l.strip().replace(' +', ' ') for l in lines]
     print("There are ", len(lines), " tweets")
-
-    docs_Q1 = select_docs(evaluation_data1,"Q1")
-    #print(docs_Q1)
     
     # Process lines to create a list of tweet IDs
     tweet_ids = [json.loads(line)["id"] for line in lines]
-    tweet_ids_df = pd.DataFrame({'tweet_id': tweet_ids, 'position': list(range(len(tweet_ids)))})
+    tweets_texts = [json.loads(line)["full_text"] for line in lines]
+    tweet_text = pd.DataFrame({'tweet_id': tweet_ids, 'text': tweets_texts})
+    index, tf, df, idf = create_index(lines)
 
-    #index, tf, df, idf = create_index(lines)
-    # Save the index, tf, df, and idf to JSON files
-    #save_index_to_json(index, tf, df, idf, 'index.json', 'tf.json', 'df.json', 'idf.json')
-    # print(tf.keys())
-    # print(tf['putin'])
-    # Example usage:
-    #query = 'putin and the war'
-    #results = search_tf_idf(query, index, idf, tf, tweet_ids_df)
-    #print(results)
+    baseline_queries = [
+        "Tank Kharkiv",
+        "Nord Stream pipeline",
+        "Annexation territories Russia"
+    ]
+    docs_Q1 = select_docs(evaluation_data1,"Q1")
+    docs_Q2 = select_docs(evaluation_data1,"Q2")
+    docs_Q3 = select_docs(evaluation_data1,"Q3")
 
+    print(f"Query: {baseline_queries[0]}")
+    results = search_tf_idf(baseline_queries[0], index, idf, tf)
+    relevant_tweets = tweet_text[tweet_text["tweet_id"].isin(results)]
+    print(relevant_tweets["text"])
+    print("=" * 50)
 
-    # Load the index, tf, df, and idf from JSON files
-    # loaded_index, loaded_tf, loaded_df, loaded_idf = load_index_from_json('index.json', 'tf.json', 'df.json', 'idf.json')
-    # 
-    # print("Total time to create the index: {} seconds".format(np.round(time.time() - start_time, 2)))
+ 
+    # query = 'putin and the war'
+    # results = search_tf_idf(query, index, idf, tf)
 
-    # print("Index results for the term 'putin': {}\n".format(index['putin']))
-    # print("First 10 Index results for the term 'putin': \n{}".format(index['putin'][:10]))
-   
-    # query = ["putin", "war", "ukraine"]  # Replace with your query terms
-    # k = 5  # Number of most relevant tweets to retrieve
-    # result_tweets = search_tf_idf(query, tf, df, idf, index, k)
-    # print(result_tweets)
+    # relevant_tweets = tweet_text[tweet_text["tweet_id"].isin(results)]
+    # print(relevant_tweets["text"])
 
-    # query = "putin Russia"
+    #     # Define test queries
+    # test_queries = [
+    #     "Russian military intervention in Ukraine",
+    #     "Impact of sanctions on Russia",
+    #     "Ukraine conflict timeline",
+    #     "International response to Russia-Ukraine war",
+    #     "Humanitarian crisis in Ukraine"
+    # ]
+    # query_results = []
+    # # Evaluate search engine using test queries
+    # for query in test_queries:
+    #     print(f"Query: {query}")
+    #     results = search_tf_idf(query, index, idf, tf)
+    #     relevant_tweets = tweet_text[tweet_text["tweet_id"].isin(results)]
+    #     print(relevant_tweets["text"])
+    #     print("=" * 50)
+    #     query_results.append(f"Query: {query}\n")
+    #     query_results.extend(relevant_tweets["text"].tolist())
+    #     query_results.append("=" * 50 + "\n")
 
-    # # Calculate TF-IDF scores
-    # tf_idf_scores = calculate_tf_idf(index)
-
-    # # Retrieve top k relevant tweets for the query
-    # k = 10  # Number of top tweets to retrieve
-    # relevant_tweets = retrieve_top_k_tweets(query, index, tf_idf_scores, k)
-    # print(relevant_tweets)
-    # # Print the relevant tweets
-    # print("Top {} Relevant Tweets for the Query '{}':".format(k, query))
-    # for tweet_id in relevant_tweets:
-    #     print("Tweet ID:", tweet_id) 
-    # # df = vector_index(lines)
-    # #scatter_plot(df)
+    # # Save results to a text file
+    # with open('search_results.txt', 'w', encoding='utf-8') as file:
+    #     file.writelines(query_results)
 
 main()
 
