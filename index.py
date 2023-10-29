@@ -248,8 +248,8 @@ def main():
     docs_Q3, ground_truths_Q3 = select_docs(evaluation_data1,"Q3")
     
     subset = [line for line in lines if tweet_document_ids_map[json.loads(line)["id"]] in(docs_Q1)]
-    subset_tweets_texts = [json.loads(line)["full_text"] for line in subset]
-    print(subset_tweets_texts)
+    subset = sorted(subset, key=lambda line: docs_Q1.index(tweet_document_ids_map[json.loads(line)["id"]]))
+    #subset_tweets_texts = [json.loads(line)["full_text"] for line in subset]
     subset_tweets_ids = [json.loads(line)["id"] for line in subset]
     subindex, subtf, subdf, subidf = create_index(subset)
 
@@ -257,9 +257,6 @@ def main():
     results, scores = search_tf_idf(baseline_queries[0], subindex, subidf, subtf)
     
     y_scores = [scores[results.index(tweet)] if(tweet in results) else 0 for tweet in subset_tweets_ids]
-    print(y_scores)
-    print(results)
-    print(scores)
     relevant_tweets = tweet_text[tweet_text["tweet_id"].isin(results)]
     print(relevant_tweets["text"])
 
