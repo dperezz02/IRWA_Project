@@ -215,6 +215,86 @@ def precision_at_k(doc_score, y_score, k=10):
     relevant = sum(doc_score == 1)
     return float(relevant) / k
 
+def recall_at_k(doc_score, y_score, k=10):
+    """
+    Parameters
+    ----------
+    doc_score: Ground truth (true relevance labels).
+    y_score: Predicted scores.
+    k : number of doc to consider.
+
+    Returns
+    -------
+    precision @k : float
+
+    """
+    r = np.sum(doc_score)
+    order = np.argsort(y_score)[::-1]
+    doc_score = np.take(doc_score, order[:k])
+    relevant = sum(doc_score == 1)
+    return float(relevant) / r
+
+def avg_precision_at_k(doc_score, y_score, k=10):
+    """
+    Parameters
+    ----------
+    doc_score: Ground truth (true relevance labels).
+    y_score: Predicted scores.
+    k : number of doc to consider.
+
+    Returns
+    -------
+    average precision @k : float
+    """
+    gtp = np.sum(doc_score)
+    order = np.argsort(y_score)[::-1]
+    doc_score = np.take(doc_score, order[:k])
+    ## if all documents are not relevant
+    if gtp == 0:
+        return 0
+    n_relevant_at_i = 0
+    prec_at_i = 0
+    for i in range(len(doc_score)):
+        if doc_score[i] == 1:
+            n_relevant_at_i += 1
+            prec_at_i += n_relevant_at_i / (i + 1)
+    return prec_at_i / gtp
+
+def dcg_at_k(doc_score, y_score, k=10):
+    order = np.argsort(y_score)[::-1]  # get the list of indexes of the predicted score sorted in descending order.
+    doc_score = np.take(doc_score, order[:k])  # sort the actual relevance label of the documents based on predicted score(hint: np.take) and take first k.
+    gain = 2 ** doc_score - 1  # Compute gain (use formula 7 above)
+    discounts = np.log2(np.arange(len(doc_score)) + 2)  # Compute denominator
+    return np.sum(gain / discounts)  #return dcg@k
+
+
+def ndcg_at_k(doc_score, y_score, k=10):
+    dcg_max = dcg_at_k(doc_score, doc_score, k)
+    if not dcg_max:
+        return 0
+    return np.round(dcg_at_k(doc_score, y_score, k) / dcg_max, 4)
+
+def rr_at_k(doc_score, y_score, k=10):
+    """
+    Parameters
+    ----------
+    doc_score: Ground truth (true relevance labels).
+    y_score: Predicted scores.
+    k : number of doc to consider.
+
+    Returns
+    -------
+    Reciprocal Rank for qurrent query
+    """
+
+    order = np.argsort(y_score)[::-1]  # get the list of indexes of the predicted score sorted in descending order.
+    doc_score = np.take(doc_score, order[
+                             :k])  # sort the actual relevance label of the documents based on predicted score(hint: np.take) and take first k.
+    if np.sum(doc_score) == 0:  # if there are not relevant doument return 0
+        return 0
+    return 1 / (np.argmax(doc_score == 1) + 1)  # hint: to get the position of the first relevant document use "np.argmax"
+
+
 def main():
     file_path = ''
     start_time = time.time()
@@ -241,33 +321,84 @@ def main():
     baseline_queries = [
         "Tank Kharkiv",
         "Nord Stream pipeline",
-        "Annexation territories Russia"
+        "Annexation of territories Russia"
     ]
+    
     docs_Q1, ground_truths_Q1 = select_docs(evaluation_data1,"Q1")
     docs_Q2, ground_truths_Q2 = select_docs(evaluation_data1,"Q2")
     docs_Q3, ground_truths_Q3 = select_docs(evaluation_data1,"Q3")
     
-    subset = [line for line in lines if tweet_document_ids_map[json.loads(line)["id"]] in(docs_Q1)]
-    subset = sorted(subset, key=lambda line: docs_Q1.index(tweet_document_ids_map[json.loads(line)["id"]]))
-    #subset_tweets_texts = [json.loads(line)["full_text"] for line in subset]
-    subset_tweets_ids = [json.loads(line)["id"] for line in subset]
-    subindex, subtf, subdf, subidf = create_index(subset)
-
-    print(f"Query: {baseline_queries[0]}")
-    results, scores = search_tf_idf(baseline_queries[0], subindex, subidf, subtf)
-    
-    y_scores = [scores[results.index(tweet)] if(tweet in results) else 0 for tweet in subset_tweets_ids]
-    relevant_tweets = tweet_text[tweet_text["tweet_id"].isin(results)]
-    #print(relevant_tweets["text"])
-
-    file_path = 'output.txt'
+    subsetQ1 = [line for line in lines if tweet_document_ids_map[json.loads(line)["id"]] in(docs_Q1)]
+    subsetQ1 = sorted(subsetQ1, key=lambda line: docs_Q1.index(tweet_document_ids_map[json.loads(line)["id"]]))
+    subset_tweets_idsQ1 = [json.loads(line)["id"] for line in subsetQ1]
+    subindexQ1, subtfQ1, subdfQ1, subidfQ1 = create_index(subsetQ1)
+    resultsQ1, scoresQ1 = search_tf_idf(baseline_queries[0], subindexQ1, subidfQ1, subtfQ1)
+    y_scoresQ1 = [scoresQ1[resultsQ1.index(tweet)] if(tweet in resultsQ1) else 0 for tweet in subset_tweets_idsQ1]
+    relevant_tweetsQ1 = tweet_text[tweet_text["tweet_id"].isin(resultsQ1)]
+    #print(relevant_tweetsQ1["text"])
+    file_path = 'outputQ1.txt'
     # Open the file in write mode and save the text content
     with open(file_path, 'w', encoding="utf-8") as file:
-        file.write(relevant_tweets.to_string(index=False))
+        file.write(relevant_tweetsQ1.to_string(index=False))
+
+    subsetQ2 = [line for line in lines if tweet_document_ids_map[json.loads(line)["id"]] in(docs_Q2)]
+    subsetQ2 = sorted(subsetQ2, key=lambda line: docs_Q2.index(tweet_document_ids_map[json.loads(line)["id"]]))
+    subset_tweets_idsQ2 = [json.loads(line)["id"] for line in subsetQ2]
+    subindexQ2, subtfQ2, subdfQ2, subidfQ2 = create_index(subsetQ2)
+    resultsQ2, scoresQ2 = search_tf_idf(baseline_queries[1], subindexQ2, subidfQ2, subtfQ2)
+    y_scoresQ2 = [scoresQ2[resultsQ2.index(tweet)] if(tweet in resultsQ2) else 0 for tweet in subset_tweets_idsQ2]
+
+    subsetQ3 = [line for line in lines if tweet_document_ids_map[json.loads(line)["id"]] in(docs_Q3)]
+    subsetQ3 = sorted(subsetQ3, key=lambda line: docs_Q3.index(tweet_document_ids_map[json.loads(line)["id"]]))
+    subset_tweets_idsQ3 = [json.loads(line)["id"] for line in subsetQ3]
+    subindexQ3, subtfQ3, subdfQ3, subidfQ3 = create_index(subsetQ3)
+    resultsQ3, scoresQ3 = search_tf_idf(baseline_queries[2], subindexQ3, subidfQ3, subtfQ3)
+    y_scoresQ3 = [scoresQ3[resultsQ3.index(tweet)] if(tweet in resultsQ3) else 0 for tweet in subset_tweets_idsQ3]
 
     #EVALUATION
-    precision_Q1 = precision_at_k(ground_truths_Q1, y_scores)
-    print(precision_Q1)
+    print(f"Query: {baseline_queries[0]}")
+    precision_Q1 = precision_at_k(ground_truths_Q1, y_scoresQ1)
+    print("Precision at 10 of Query 1: ", precision_Q1)
+    recall_Q1 = recall_at_k(ground_truths_Q1, y_scoresQ1)
+    print("Recall at 10 of Query 1: ", recall_Q1)
+    avg_precision_Q1 = avg_precision_at_k(ground_truths_Q1, y_scoresQ1)
+    print("Average Precision at 10 of Query 1: ", avg_precision_Q1)
+    fscore_Q1 = (2*recall_Q1*precision_Q1)/(recall_Q1+precision_Q1)
+    print("F1-Score at 10 of Query 1: ", fscore_Q1)
+    ndcg_Q1 = ndcg_at_k(ground_truths_Q1, y_scoresQ1)
+    print("NDG at 10 of Query 1: ", ndcg_Q1)
+
+    print("\n")
+    print(f"Query: {baseline_queries[1]}")
+    precision_Q2 = precision_at_k(ground_truths_Q2, y_scoresQ2)
+    print("Precision at 10 of Query 2: ", precision_Q2)
+    recall_Q2 = recall_at_k(ground_truths_Q2, y_scoresQ2)
+    print("Recall at 10 of Query 2: ", recall_Q2)
+    avg_precision_Q2 = avg_precision_at_k(ground_truths_Q2, y_scoresQ2)
+    print("Average Precision at 10 of Query 2: ", avg_precision_Q2)
+    fscore_Q2 = (2*recall_Q2*precision_Q2)/(recall_Q2+precision_Q2)
+    print("F1-Score at 10 of Query 2: ", fscore_Q2)
+    ndcg_Q2 = ndcg_at_k(ground_truths_Q2, y_scoresQ2)
+    print("NDG at 10 of Query 2: ", ndcg_Q2)
+
+    print("\n")
+    print(f"Query: {baseline_queries[2]}")
+    precision_Q3 = precision_at_k(ground_truths_Q3, y_scoresQ3)
+    print("Precision at 10 of Query 3: ", precision_Q3)
+    recall_Q3 = recall_at_k(ground_truths_Q3, y_scoresQ3)
+    print("Recall at 10 of Query 3: ", recall_Q3)
+    avg_precision_Q3 = avg_precision_at_k(ground_truths_Q3, y_scoresQ3)
+    print("Average Precision at 10 of Query 3: ", avg_precision_Q3)
+    fscore_Q3 = (2*recall_Q3*precision_Q3)/(recall_Q3+precision_Q3)
+    print("F1-Score at 10 of Query 3: ", fscore_Q3)
+    ndcg_Q3 = ndcg_at_k(ground_truths_Q3, y_scoresQ3)
+    print("NDG at 10 of Query 3: ", ndcg_Q3)
+
+    print("\n")
+    map = (avg_precision_Q1+avg_precision_Q2+avg_precision_Q3)/3
+    print("MAP of Queries 1,2 and 3: ", map)
+    mrr = (rr_at_k(ground_truths_Q1, y_scoresQ1)+rr_at_k(ground_truths_Q2, y_scoresQ2)+rr_at_k(ground_truths_Q2, y_scoresQ3))/3
+    print("MRR of Queries 1,2 and 3: ", mrr)
 
 
     # query = 'putin and the war'
