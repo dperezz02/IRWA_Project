@@ -249,6 +249,7 @@ def main():
     
     subset = [line for line in lines if tweet_document_ids_map[json.loads(line)["id"]] in(docs_Q1)]
     subset_tweets_texts = [json.loads(line)["full_text"] for line in subset]
+    print(subset_tweets_texts)
     subset_tweets_ids = [json.loads(line)["id"] for line in subset]
     subindex, subtf, subdf, subidf = create_index(subset)
 
