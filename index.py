@@ -323,12 +323,12 @@ def main():
     baseline_queries = [
         "Tank Kharkiv",
         "Nord Stream pipeline",
-        "Annexation of territories Russia"
+        "Annexation territories"
     ]
     
-    docs_Q1, ground_truths_Q1 = select_docs(evaluation_data2,"Q1")
-    docs_Q2, ground_truths_Q2 = select_docs(evaluation_data2,"Q2")
-    docs_Q3, ground_truths_Q3 = select_docs(evaluation_data2,"Q3")
+    docs_Q1, ground_truths_Q1 = select_docs(evaluation_data1,"Q1")
+    docs_Q2, ground_truths_Q2 = select_docs(evaluation_data1,"Q2")
+    docs_Q3, ground_truths_Q3 = select_docs(evaluation_data1,"Q3")
     
     subsetQ1 = [line for line in lines if tweet_document_ids_map[json.loads(line)["id"]] in(docs_Q1)]
     subsetQ1 = sorted(subsetQ1, key=lambda line: docs_Q1.index(tweet_document_ids_map[json.loads(line)["id"]]))
